@@ -30,15 +30,8 @@ func NewConsistantHash(replicas int, hashFunc func(data []byte) int) *Consistant
 }
 
 // 初始化一致性hash环
-func (hash *ConsistantHash) initCircle(nodes ...string) {
-	if len(nodes) == 0 {
-		return
-	}
-	if len(hash.keys) != 0 {
-		hash.Clear()
-	}
-
-	for _, node := range nodes {
+func (hash *ConsistantHash) AddKeys(keys ...string) {
+	for _, node := range keys {
 		for i := 0; i < hash.replicas; i++ {
 			hashKey := hash.hashFunc([]byte(strconv.Itoa(i) + node))
 			hash.keys = append(hash.keys, hashKey)
@@ -54,7 +47,7 @@ func (hash *ConsistantHash) Clear() {
 	hash.hashMap = make(map[int]string)
 }
 
-func (hash *ConsistantHash) GetNode(key string) (string, bool) {
+func (hash *ConsistantHash) Get(key string) (string, bool) {
 	if len(hash.keys) == 0 {
 		return "", false
 	}
