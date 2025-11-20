@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// 这里需要锁保护吗？
 type ConsistantHash struct {
 	replicas int
 	keys     []int
