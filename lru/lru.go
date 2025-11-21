@@ -2,6 +2,7 @@ package lru
 
 import (
 	"container/list"
+	"fmt"
 	"sync"
 )
 
@@ -42,8 +43,8 @@ func (lru *Lru) Get(key string) (string, Value) {
 
 	if value := lru.keyMap[key]; value != nil {
 		lru.cache.MoveToBack(value)
-		key := value.Value.(*entry).key
-		value := value.Value.(*entry).value
+		key := value.Value.(entry).key
+		value := value.Value.(entry).value
 		return key, value
 	}
 	return "", nil
@@ -56,13 +57,12 @@ func (lru *Lru) Add(key string, value Value) {
 		lru.cache.MoveToBack(e)
 	} else {
 		entry := entry{key: key, value: value}
-		element := &list.Element{
-			Value: entry,
-		}
-		if !lru.couldInserEle(element) {
+		if !lru.couldInserEle(entry) {
 			lru.shrink(value.Len())
 		}
 		lru.cache.PushBack(entry)
+		lru.keyMap[key] = lru.cache.Back()
+		lru.curBytes += value.Len()
 	}
 }
 
@@ -74,6 +74,22 @@ func (lru *Lru) Delete(key string) {
 	}
 }
 
+func (lru *Lru) Len() int {
+	lru.mtx.Lock()
+	defer lru.mtx.Unlock()
+	return lru.cache.Len()
+}
+
+func (lru *Lru) PrintAllItems() {
+	lru.mtx.Lock()
+	defer lru.mtx.Unlock()
+	e := lru.cache.Front()
+	for e != nil {
+		entry := e.Value.(entry)
+		fmt.Println(entry.key, ":", entry.value)
+	}
+}
+
 func (lru *Lru) shrink(size int) {
 	if size > lru.bytes() {
 		lru.clear()
@@ -81,7 +97,7 @@ func (lru *Lru) shrink(size int) {
 	}
 
 	for size > 0 {
-		size -= lru.cache.Front().Value.(*entry).value.Len()
+		size -= lru.cache.Front().Value.(entry).value.Len()
 		lru.delete(lru.cache.Front())
 	}
 }
@@ -90,11 +106,11 @@ func (lru *Lru) delete(e *list.Element) {
 	if lru.cache.Len() == 0 {
 		return
 	}
-	targetKey := e.Value.(*entry).key
+	targetKey := e.Value.(entry).key
 	if value := lru.keyMap[targetKey]; value != nil {
 		lru.cache.Remove(e)
 		delete(lru.keyMap, targetKey)
-		lru.curBytes -= value.Value.(*entry).value.Len()
+		lru.curBytes -= value.Value.(entry).value.Len()
 	}
 }
 
@@ -104,8 +120,8 @@ func (lru *Lru) clear() {
 	lru.curBytes = 0
 }
 
-func (lru *Lru) couldInserEle(e *list.Element) bool {
-	if lru.bytes()+e.Value.(*entry).value.Len() > lru.maxBytes {
+func (lru *Lru) couldInserEle(e entry) bool {
+	if lru.bytes()+e.value.Len() > lru.maxBytes {
 		return false
 	}
 	return true
