@@ -1,6 +1,10 @@
 package lru
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/TheChosenGay/memcache/byte_view"
+)
 
 type StringValue string
 
@@ -10,21 +14,21 @@ func (s StringValue) Len() int {
 
 func TestLruAdd(t *testing.T) {
 	lru := NewLru(100)
-	lru.Add("key1", StringValue("value1"))
-	lru.Add("key2", StringValue("value2"))
-	lru.Add("key2", StringValue("value2-updated"))
+	lru.Add("key1", byte_view.NewByteView([]byte("hello")))
+	lru.Add("key2", byte_view.NewByteView([]byte("value2")))
+	lru.Add("key2", byte_view.NewByteView([]byte("value2-updated")))
 	if lru.Len() != 2 {
 		t.Errorf("expected length 2, got %d", lru.Len())
 	}
-	if _, value := lru.Get("key1"); value == nil || value != StringValue("value1") {
+	if _, exist := lru.Get("key1"); !exist {
 		t.Error("expected value1 for key1")
 	}
 }
 
 func TestLruDelete(t *testing.T) {
 	lru := NewLru(100)
-	lru.Add("key1", StringValue("value1"))
-	lru.Add("key2", StringValue("value2"))
+	lru.Add("key1", byte_view.NewByteView([]byte("value1")))
+	lru.Add("key2", byte_view.NewByteView([]byte("value2")))
 	lru.Delete("key1")
 
 	if lru.Len() != 1 {

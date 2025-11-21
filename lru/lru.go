@@ -4,6 +4,8 @@ import (
 	"container/list"
 	"fmt"
 	"sync"
+
+	"github.com/TheChosenGay/memcache/byte_view"
 )
 
 type Lru struct {
@@ -19,9 +21,7 @@ type entry struct {
 	value Value
 }
 
-type Value interface {
-	Len() int
-}
+type Value = byte_view.ByteView
 
 // 访问更新
 // 怎么删除
@@ -37,17 +37,16 @@ func NewLru(maxBytes int) *Lru {
 	}
 }
 
-func (lru *Lru) Get(key string) (string, Value) {
+func (lru *Lru) Get(key string) (Value, bool) {
 	lru.mtx.Lock()
 	defer lru.mtx.Unlock()
 
 	if value := lru.keyMap[key]; value != nil {
 		lru.cache.MoveToBack(value)
-		key := value.Value.(entry).key
 		value := value.Value.(entry).value
-		return key, value
+		return value, true
 	}
-	return "", nil
+	return Value{}, false
 }
 
 func (lru *Lru) Add(key string, value Value) {
